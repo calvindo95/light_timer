@@ -43,9 +43,6 @@ if __name__=="__main__":
 
 
     # calculate sleep until light on
-    
-    sleep_timer = None
-
     # if curr_time is past light_on, sleep until today_ss
     if today_ss_secs > curr_time_secs > light_on_secs:
         # sleep until light off
