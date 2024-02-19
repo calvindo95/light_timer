@@ -2,17 +2,19 @@ import time
 import datetime
 import subprocess
 from suntime import Sun
+import schedule
 
-hours_on = 5
-ip_addr = "192.168.1.218"
+hours_on = 6
+light_ip_addr = "192.168.1.218"
+co2_ip_addr = "192.168.1.212"
 
-def on():
-    print("On")
-    subprocess.Popen(['hs100', ip_addr, 'on'])
+def on(ip_addr):
+    print(f"{time.mktime(datetime.datetime.now().timetuple())}: Turning on {ip_addr}")
+    subprocess.run(['/usr/local/bin/hs100', ip_addr, 'on'])
 
-def off():
-    print("Off")
-    subprocess.Popen(['hs100', ip_addr, 'off'])
+def off(ip_addr):
+    print(f"{time.mktime(datetime.datetime.now().timetuple())}: Turning off {ip_addr}")
+    subprocess.run(['/usr/local/bin/hs100', ip_addr, 'off'])
 
 if __name__=="__main__":
     latitude = 38.51
@@ -26,46 +28,31 @@ if __name__=="__main__":
     today_ss = sun.get_local_sunset_time()
     today_ss_secs = time.mktime(today_ss.timetuple())
 
+    # calculate co2 on tome
+    co2_on = today_ss - datetime.timedelta(hours=hours_on+1)
+    schedule.every().day.at(f"{co2_on.strftime('%H:%M')}").do(on, ip_addr=co2_ip_addr)
+
+    # calculate light on time
     light_on = today_ss - datetime.timedelta(hours=hours_on)
-    light_on_secs = time.mktime(light_on.timetuple())
+    schedule.every().day.at(f"{light_on.strftime('%H:%M')}").do(on, ip_addr=light_ip_addr)
+
+    # calculate co2 off time
+    co2_off = today_ss - datetime.timedelta(hours=1)
+    schedule.every().day.at(f"{co2_off.strftime('%H:%M')}").do(off, ip_addr=co2_ip_addr)
+
+    # calculate light off time
+    light_off = today_ss
+    schedule.every().day.at(f"{light_off.strftime('%H:%M')}").do(off, ip_addr=light_ip_addr)
 
     # print current time
-    print(f"current time: {curr_time.strftime('%H:%M')}")
-    print(f"current time in seconds: {curr_time_secs}")
+    print(f"Current time: {curr_time.strftime('%m/%d/%y %H:%M')}")
+    print(f"CO2 on at {co2_on.strftime('%H:%M')}")
+    print(f"Light on at {light_on.strftime('%H:%M')}")
+    print(f"CO2 off at {co2_off.strftime('%H:%M')}")
+    print(f"SS time and light off at {light_off.strftime('%H:%M')}")
 
-    # print sunset time    
-    print(f"ss: {today_ss.strftime('%H:%M')}")
-    print(f"ss in seconds: {today_ss_secs}")
+    print(schedule.get_jobs())
 
-    # print light on time
-    print(f"Light on at: {light_on.strftime('%H:%M')}")
-    print(f"Light on at in seconds: {light_on_secs}")
-
-
-    # calculate sleep until light on
-    # if curr_time is past light_on, sleep until today_ss
-    if today_ss_secs > curr_time_secs > light_on_secs:
-        # sleep until light off
-        sleep_timer = today_ss_secs - curr_time_secs
-        print(f"Sleeping until sunset: {sleep_timer}")
-        time.sleep(sleep_timer)
-
-        off()
-
-    # if curr_time is before light_on, sleep until light_on
-    elif today_ss_secs > light_on_secs > curr_time_secs:
-        # sleep until light_on
-        sleep_timer = light_on_secs - today_ss_secs
-        print(f"Sleeping until light on: {sleep_timer}")
-        time.sleep(sleep_timer)
-
-        on()
-
-        # sleep until sunset
-        sleep_timer = today_ss_secs - light_on_secs
-        print(f"Sleeping until sunset: {sleep_timer}")
-        time.sleep(sleep_timer)
-
-        off()
-    else:
-        print("Timer is past sunset; Doing nothing")
+    while today_ss_secs+10 > time.mktime(datetime.datetime.now().timetuple()):
+        schedule.run_pending()
+        time.sleep(1)
