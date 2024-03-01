@@ -9,11 +9,11 @@ light_ip_addr = "192.168.1.218"
 co2_ip_addr = "192.168.1.212"
 
 def on(ip_addr):
-    print(f"{time.mktime(datetime.datetime.now().timetuple())}: Turning on {ip_addr}")
+    print(f"{datetime.datetime.now().strftime('%H:%M')}: Turning on {ip_addr}")
     subprocess.run(['/usr/local/bin/hs100', ip_addr, 'on'])
 
 def off(ip_addr):
-    print(f"{time.mktime(datetime.datetime.now().timetuple())}: Turning off {ip_addr}")
+    print(f"{datetime.datetime.now().strftime('%H:%M')}: Turning off {ip_addr}")
     subprocess.run(['/usr/local/bin/hs100', ip_addr, 'off'])
 
 if __name__=="__main__":
@@ -23,25 +23,27 @@ if __name__=="__main__":
     sun = Sun(latitude, longitude)
 
     curr_time = datetime.datetime.now()
-    curr_time_secs = time.mktime(curr_time.timetuple())
+
+    today_sr = sun.get_local_sunrise_time()
+    today_sr_secs = time.mktime(today_sr.timetuple())
 
     today_ss = sun.get_local_sunset_time()
     today_ss_secs = time.mktime(today_ss.timetuple())
 
-    # calculate co2 on tome
-    co2_on = today_ss - datetime.timedelta(hours=hours_on+1)
+    # calculate co2 on time
+    co2_on = today_sr - datetime.timedelta(hours=1)
     schedule.every().day.at(f"{co2_on.strftime('%H:%M')}").do(on, ip_addr=co2_ip_addr)
 
     # calculate light on time
-    light_on = today_ss - datetime.timedelta(hours=hours_on)
+    light_on = today_sr
     schedule.every().day.at(f"{light_on.strftime('%H:%M')}").do(on, ip_addr=light_ip_addr)
 
     # calculate co2 off time
-    co2_off = today_ss - datetime.timedelta(hours=1)
+    co2_off = today_sr + datetime.timedelta(hours=hours_on - 1)
     schedule.every().day.at(f"{co2_off.strftime('%H:%M')}").do(off, ip_addr=co2_ip_addr)
 
     # calculate light off time
-    light_off = today_ss
+    light_off = today_sr + datetime.timedelta(hours=hours_on)
     schedule.every().day.at(f"{light_off.strftime('%H:%M')}").do(off, ip_addr=light_ip_addr)
 
     # print current time
@@ -53,6 +55,6 @@ if __name__=="__main__":
 
     print(schedule.get_jobs())
 
-    while today_ss_secs+10 > time.mktime(datetime.datetime.now().timetuple()):
+    while today_ss_secs > time.mktime(datetime.datetime.now().timetuple()):
         schedule.run_pending()
         time.sleep(1)
