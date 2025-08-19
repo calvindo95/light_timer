@@ -1,5 +1,6 @@
 import time
 import datetime
+from dateutil import tz
 import subprocess
 from suntime import Sun
 import schedule
@@ -9,12 +10,16 @@ import os
 import config
 
 def on(ip_addr):
-    print(f"{datetime.datetime.now().strftime('%H:%M')}: Turning on {ip_addr}")
-    subprocess.run(['/usr/local/bin/hs100', ip_addr, 'on'])
+    proc = subprocess.run(['/usr/local/bin/hs100', ip_addr, 'on'], capture_output=True)
+
+    if proc.stderr.decode():
+        logging.info(f"Failed to turn on {ip_addr} with error: {proc.stderr.rstrip().decode()}")
 
 def off(ip_addr):
-    print(f"{datetime.datetime.now().strftime('%H:%M')}: Turning off {ip_addr}")
-    subprocess.run(['/usr/local/bin/hs100', ip_addr, 'off'])
+    proc = subprocess.run(['/usr/local/bin/hs100', ip_addr, 'off'], capture_output=True)
+
+    if proc.stderr.decode():
+        logging.info(f"Failed to turn off {ip_addr} with error: {proc.stderr.rstrip().decode()}")
 
 def initialize_logging():
     if not os.path.isdir(config.log_dir):
@@ -28,14 +33,14 @@ if __name__=="__main__":
     longitude = -77.20
 
     sun = Sun(latitude, longitude)
-    today_sr = sun.get_local_sunrise_time()
+    today_sr = sun.get_sunrise_time(time_zone=tz.gettz('US/Eastern'))
 
     # calculate co2 on time
-    co2_on = today_sr - datetime.timedelta(hours=1)
+    co2_on = today_sr - datetime.timedelta(hours=0)
     schedule.every().day.at(f"{co2_on.strftime('%H:%M')}").do(on, ip_addr=config.co2_ip_addr)
 
     # calculate light on time
-    light_on = today_sr + datetime.timedelta(hours=1)
+    light_on = today_sr + datetime.timedelta(hours=2)
     schedule.every().day.at(f"{light_on.strftime('%H:%M')}").do(on, ip_addr=config.light_ip_addr)
 
     # calculate co2 off time
