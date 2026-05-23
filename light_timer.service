@@ -1,0 +1,14 @@
+[Unit]
+Description=Light Timer Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/projects/light_timer
+ExecStart=/home/pi/projects/light_timer/.venv/bin/python /home/pi/projects/light_timer/main.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
