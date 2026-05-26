@@ -14,11 +14,13 @@ import config
 running = True
 
 def on(ip_addr):
+    logging.info(f"Turning on {ip_addr}")
     proc = subprocess.run(['/usr/local/bin/hs100', ip_addr, 'on'], capture_output=True)
     if proc.stderr.decode():
         logging.info(f"Failed to turn on {ip_addr} with error: {proc.stderr.rstrip().decode()}")
 
 def off(ip_addr):
+    logging.info(f"Turning off {ip_addr}")
     proc = subprocess.run(['/usr/local/bin/hs100', ip_addr, 'off'], capture_output=True)
     if proc.stderr.decode():
         logging.info(f"Failed to turn off {ip_addr} with error: {proc.stderr.rstrip().decode()}")
